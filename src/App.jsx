@@ -415,7 +415,10 @@ const LeaderboardTable = ({ users, onRowClick }) => {
 
   return (
     <div ref={parentRef} className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: '72vh' }}>
-      <div style={{ minWidth: 800 }}>
+      {/* FIX 1: Increased minWidth from 800 to 900 so the flexbox grid 
+        never crushes the username column on tiny screens. 
+      */}
+      <div style={{ minWidth: 900 }}>
         {/* Header */}
         <div className={cn('sticky top-0 z-10 grid gap-4 px-6 py-3 border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500', COL)}
           style={{ background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(8px)' }}>
@@ -443,13 +446,13 @@ const LeaderboardTable = ({ users, onRowClick }) => {
                 <div className={cn('font-mono font-semibold text-sm flex items-center gap-1', isTop ? 'text-[#FBBF24]' : 'text-slate-500')}>
                   {isTop && <Trophy className="w-3 h-3" />}{u.global_rank}
                 </div>
-                {/* Username */}
-                <div className="font-semibold text-[#60A5FA] text-sm truncate group-hover:text-blue-300 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`} className="w-6 h-6 rounded-full bg-slate-800" />
-                    {u.username}
-                  </div>
+
+                {/* Username - FIX 2: Restructured flexbox to prevent text collapsing */}
+                <div className="font-semibold text-[#60A5FA] text-sm group-hover:text-blue-300 transition-colors flex items-center min-w-0">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`} className="w-6 h-6 rounded-full bg-slate-800 shrink-0 mr-2" />
+                  <span className="truncate">{u.username}</span>
                 </div>
+
                 {/* Score */}
                 <div className="text-slate-300 font-mono text-sm">{u.score ?? '—'}</div>
                 {/* Finish Time */}

@@ -1,5 +1,11 @@
-curl_cffi==0.6.2
-requests
-python-dotenv
+fastapi
+uvicorn
 supabase
+pydantic
 pandas
+numpy
+joblib
+python-dotenv
+requests
+xgboost
+scikit-learn

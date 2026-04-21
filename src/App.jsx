@@ -42,7 +42,6 @@ function useContests() {
         setLoading(false);
       })
       .catch(() => {
-        // If the server is down, show nothing instead of fake options
         setContests([]);
         setLoading(false);
       });
@@ -56,7 +55,7 @@ function useContests() {
 // ────────────────────────────────────────────────────────────────────────────────
 function usePredictions(contestSlug) {
   const [data, setData] = useState([]);
-  const [status, setStatus] = useState('idle');   // idle | loading | scraping | done | error
+  const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState({ pct: 0, pages_done: 0, total_pages: 0 });
   const [meta, setMeta] = useState({ total: 0, contest: '' });
@@ -76,7 +75,6 @@ function usePredictions(contestSlug) {
 
         if (prog.status === 'done') {
           stopPolling();
-          // Fetch the finished result
           fetchPredictions(slug, false);
         } else if (prog.status === 'error') {
           stopPolling();
@@ -101,7 +99,6 @@ function usePredictions(contestSlug) {
 
       const res = await fetch(url);
 
-      // 202 = scraping in progress (either just triggered or already running)
       if (res.status === 202) {
         setStatus('scraping');
         pollProgress(slug);
@@ -116,10 +113,8 @@ function usePredictions(contestSlug) {
       setStatus('done');
 
     } catch (err) {
-      // If the contest hasn't been scraped yet (net error or 500), auto-trigger a scrape
       if (err.message.includes('202') || err.message.includes('404') || err.message.includes('Failed to fetch')) {
         setStatus('scraping');
-        // Trigger scrape by calling the endpoint (server will kick off the pipeline)
         try {
           const r2 = await fetch(`${API_BASE}/predict/${slug}`);
           if (r2.status === 202 || r2.ok) {
@@ -134,7 +129,6 @@ function usePredictions(contestSlug) {
     }
   }, [pollProgress]);
 
-  // Refetch when contest changes
   useEffect(() => {
     if (!contestSlug) return;
     stopPolling();
@@ -154,7 +148,6 @@ function usePredictions(contestSlug) {
 const App = () => {
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedContest, setSelectedContest] = useState(null);
 
@@ -163,14 +156,12 @@ const App = () => {
     selectedContest?.slug
   );
 
-  // Auto-select the first contest once the list loads
   useEffect(() => {
     if (!selectedContest && contests.length > 0) {
       setSelectedContest(contests[0]);
     }
   }, [contests, selectedContest]);
 
-  // Dual-search: username OR rank
   const filtered = useMemo(() => {
     if (!search) return data;
     const q = search.toLowerCase().trim();
@@ -180,7 +171,6 @@ const App = () => {
     );
   }, [data, search]);
 
-  const handleRowClick = (user) => { setSelectedUser(user); setIsSheetOpen(true); };
   const handleContestSelect = (c) => { setSelectedContest(c); setDropdownOpen(false); setSearch(''); };
 
   const isLive = status === 'done';
@@ -188,12 +178,12 @@ const App = () => {
   const isLoading = status === 'loading' || (status === 'idle' && !!selectedContest);
 
   return (
-    <div className="min-h-screen text-slate-100 flex flex-col bg-cover bg-fixed bg-center bg-no-repeat"
+    <div className="min-h-screen text-slate-100 flex flex-col bg-cover bg-fixed bg-center bg-no-repeat overflow-x-hidden"
       style={{ backgroundImage: "url('/bg_map.png')", backgroundColor: '#050a11', fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-[#121821] border-b border-[#1E293B]/70 shadow-xl h-14">
-        <div className="max-w-[1920px] mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
 
           {/* Left Area: Logo, Shield, Dropdown */}
           <div className="flex items-center">
@@ -202,13 +192,13 @@ const App = () => {
               <div className="w-7 h-7 rounded-[6px] flex items-center justify-center bg-gradient-to-br from-[#F97316] to-[#EA580C] shadow-[0_0_12px_rgba(249,115,22,0.25)]">
                 <Trophy className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-[13px] font-bold text-slate-400 tracking-wide">
+              <span className="hidden sm:block text-[13px] font-bold text-slate-400 tracking-wide">
                 Contest Predictor
               </span>
             </div>
 
-            {/* Overlapping Shield Badge */}
-            <div className="relative mx-5">
+            {/* Overlapping Shield Badge - Hidden on mobile to save space */}
+            <div className="relative mx-5 hidden md:block">
               <div className="absolute top-[-26px] left-0 w-[42px] h-[52px] bg-gradient-to-b from-[#374151] to-[#1F2937] flex justify-center items-center z-50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
                 style={{ clipPath: 'polygon(50% 100%, 100% 75%, 100% 0, 0 0, 0 75%)' }}>
                 <div className="w-[38px] h-[48px] bg-gradient-to-b from-[#2B3544] to-[#1C2532] flex flex-col justify-center items-center pb-1"
@@ -221,14 +211,14 @@ const App = () => {
             </div>
 
             {/* Contest Dropdown */}
-            <div className="relative shrink-0 ml-[10px] w-48">
+            <div className="relative shrink-0 ml-3 sm:ml-[10px] w-36 sm:w-48">
               <button onClick={() => setDropdownOpen(v => !v)}
-                className="w-full h-[30px] flex items-center justify-between px-3 rounded text-[11px] font-semibold bg-[#222A38] border border-[#2F3A4C] text-slate-300 hover:bg-[#2A3445] transition-all">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-3 h-3 text-[#F97316]" />
+                className="w-full h-[30px] flex items-center justify-between px-2 sm:px-3 rounded text-[10px] sm:text-[11px] font-semibold bg-[#222A38] border border-[#2F3A4C] text-slate-300 hover:bg-[#2A3445] transition-all">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <Zap className="w-3 h-3 text-[#F97316] shrink-0" />
                   <span className="truncate">{contestsLoading ? 'Loading...' : selectedContest?.title ?? 'Select Contest'}</span>
                 </div>
-                <ChevronDown className={cn("w-3 h-3 text-slate-500 transition-transform", dropdownOpen && "rotate-180")} />
+                <ChevronDown className={cn("w-3 h-3 text-slate-500 transition-transform shrink-0", dropdownOpen && "rotate-180")} />
               </button>
               <AnimatePresence>
                 {dropdownOpen && (
@@ -252,10 +242,10 @@ const App = () => {
           </div>
 
           {/* Right Area: Search, Refresh, Live, Avatar */}
-          <div className="flex items-center gap-5 flex-1 justify-end">
+          <div className="flex items-center gap-3 sm:gap-5 flex-1 justify-end">
 
-            {/* Styled Search Bar */}
-            <div className="relative w-[340px] group hidden lg:block group">
+            {/* Styled Search Bar - Desktop Only */}
+            <div className="relative w-[340px] group hidden lg:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within:text-[#37B5AC] transition-colors" />
               <input type="text" placeholder="Search username or rank..."
                 value={search} onChange={e => setSearch(e.target.value)}
@@ -266,23 +256,23 @@ const App = () => {
             </div>
 
             {/* Account Config & Specs */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button onClick={refetch} disabled={isScraping || isLoading} className="group">
                 <RefreshCw className={cn("w-4 h-4 text-slate-500 group-hover:text-white transition", (isScraping || isLoading) && "animate-spin")} />
               </button>
 
-              <div className="flex items-center gap-1 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full"
+              <div className="flex items-center gap-1 text-[8px] sm:text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full"
                 style={{
                   background: isLive ? 'rgba(55,181,172,0.1)' : isScraping ? 'rgba(251,191,36,0.1)' : 'rgba(217,69,91,0.1)',
                   borderColor: isLive ? 'rgba(55,181,172,0.3)' : isScraping ? 'rgba(251,191,36,0.3)' : 'rgba(217,69,91,0.3)',
                   borderWidth: 1,
                   color: isLive ? '#37B5AC' : isScraping ? '#FBBF24' : '#D9455B',
                 }}>
-                {isLive ? <Wifi className="w-2.5 h-2.5" /> : isScraping ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <WifiOff className="w-2.5 h-2.5" />}
-                <span>{isLive ? '1 TVF' : status === 'fetching_ratings' ? 'FETCH' : isScraping ? 'SCRAPE' : 'OFF'}</span>
+                {isLive ? <Wifi className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> : isScraping ? <Loader2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 animate-spin" /> : <WifiOff className="w-2 h-2 sm:w-2.5 sm:h-2.5" />}
+                <span className="hidden sm:inline">{isLive ? '1 TVF' : status === 'fetching_ratings' ? 'FETCH' : isScraping ? 'SCRAPE' : 'OFF'}</span>
               </div>
 
-              <div className="w-7 h-7 rounded-full bg-slate-800 overflow-hidden cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-800 overflow-hidden cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Admin`} alt="avatar" />
               </div>
             </div>
@@ -292,13 +282,23 @@ const App = () => {
       </header>
 
       {/* ── Main ────────────────────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 py-8 relative">
+      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-2 sm:px-6 py-4 sm:py-8 relative">
+
+        {/* Mobile Search Bar - Visible only on small screens */}
+        <div className="relative w-full mb-4 lg:hidden group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-[#37B5AC] transition-colors" />
+          <input type="text" placeholder="Search username or rank..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full h-10 pl-10 pr-4 rounded-lg text-sm text-slate-200 placeholder-slate-500
+                       bg-[#121821]/80 backdrop-blur-sm border border-[#2F3A4C] outline-none shadow-inner
+                       focus:border-[#37B5AC]/50 focus:bg-[#1E2835] transition-all" />
+        </div>
 
         {/* Sub-header */}
-        <div className="flex items-end justify-between mb-6 relative">
-          <div className="z-10 bg-[#0A111A]/60 backdrop-blur-md pb-2 pr-4 rounded-xl">
-            <h2 className="text-2xl font-bold tracking-tight">High-Performance Data Table</h2>
-            <p className="text-slate-500 text-sm mt-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-6 relative gap-3 sm:gap-0 px-2 sm:px-0">
+          <div className="z-10 bg-[#0A111A]/60 backdrop-blur-md pb-2 sm:pr-4 rounded-xl">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">High-Performance Data Table</h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1">
               {isLoading && 'Connecting to backend...'}
               {status === 'scraping' && <span className="text-amber-400">Turbo scraping in progress — {progress.pct}% ({progress.pages_done}/{progress.total_pages} pages)</span>}
               {status === 'fetching_ratings' && <span className="text-amber-400">JIT GraphQL Fetch in progress — resolving real baseline ratings...</span>}
@@ -306,27 +306,26 @@ const App = () => {
               {status === 'error' && <span className="text-rose-500">Error: {error}</span>}
             </p>
           </div>
-          <div className="z-10 text-[10px] font-mono text-slate-400 uppercase tracking-widest
+          <div className="z-10 text-[9px] sm:text-[10px] font-mono text-slate-400 uppercase tracking-widest
                           bg-[#1A2633] px-3 py-1 rounded-full border border-slate-700 shadow-[0_0_15px_rgba(55,181,172,0.1)]">
             V-SYNC: ENABLED
           </div>
-
         </div>
 
         {/* Progress bar — visible during scraping */}
         <AnimatePresence>
           {isScraping && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="mb-6 rounded-2xl border border-amber-500/20 p-5"
+              className="mb-6 rounded-2xl border border-amber-500/20 p-4 sm:p-5 mx-2 sm:mx-0"
               style={{ background: 'rgba(251,191,36,0.05)' }}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2 sm:gap-0">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-                  <span className="text-sm font-semibold text-amber-400">
+                  <span className="text-xs sm:text-sm font-semibold text-amber-400">
                     {status === 'fetching_ratings' ? 'Resolving Real Ratings...' : 'Turbo Scraping in Progress'}
                   </span>
                 </div>
-                <span className="text-xs font-mono text-slate-500">
+                <span className="text-[10px] sm:text-xs font-mono text-slate-500">
                   {status === 'fetching_ratings' ? (
                     'Dynamic Fetch'
                   ) : (
@@ -338,42 +337,53 @@ const App = () => {
                   )}
                 </span>
               </div>
-              {/* Progress track */}
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-1.5 sm:h-2 rounded-full bg-slate-800 overflow-hidden">
                 <motion.div
                   animate={{ width: `${Math.max(2, progress.pct)}%` }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
                   className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, #f97316, #fbbf24)' }} />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-2">
                 {status === 'fetching_ratings'
                   ? 'Packing users into JIT GraphQL batch requests (15 concurrently) to gather baseline ratings.'
-                  : 'Using Turbo Stealth profile (12 concurrent · chrome120 impersonation). Results will auto-load when complete.'}
+                  : 'Using Turbo Stealth profile (12 concurrent). Results will auto-load when complete.'}
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="flex gap-6 items-start">
-          {/* Player Focus Left Bar */}
+        <div className="flex gap-6 items-start relative">
+
+          {/* Player Focus Overlay / Sidebar */}
           <AnimatePresence>
             {selectedUser && (
-              <motion.div
-                initial={{ width: 0, opacity: 0, marginLeft: 0 }}
-                animate={{ width: 350, opacity: 1, marginLeft: 0 }}
-                exit={{ width: 0, opacity: 0, marginLeft: -24 }}
-                transition={{ duration: 0.3 }}
-                className="shrink-0 overflow-hidden">
-                <div className="w-[350px]">
-                  <UserDetailSidebar user={selectedUser} totalParticipants={meta.total} onClose={() => setSelectedUser(null)} />
-                </div>
-              </motion.div>
+              <>
+                {/* Mobile Backdrop Overlay */}
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-[#050a11]/80 backdrop-blur-sm z-40 lg:hidden"
+                  onClick={() => setSelectedUser(null)}
+                />
+
+                {/* Sliding Drawer (Mobile) or Static Sidebar (Desktop) */}
+                <motion.div
+                  initial={{ maxWidth: 0, opacity: 0, x: -20 }}
+                  animate={{ maxWidth: 400, opacity: 1, x: 0 }}
+                  exit={{ maxWidth: 0, opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="fixed inset-y-0 left-0 z-50 lg:relative lg:z-auto shrink-0 bg-[#0A111A] lg:bg-transparent shadow-2xl lg:shadow-none overflow-hidden"
+                >
+                  <div className="w-[85vw] max-w-[350px] lg:w-[350px] h-full lg:h-auto overflow-y-auto lg:overflow-visible">
+                    <UserDetailSidebar user={selectedUser} totalParticipants={meta.total} onClose={() => setSelectedUser(null)} />
+                  </div>
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
 
           {/* Table card */}
-          <div className="flex-1 w-full min-w-0 border border-[#37B5AC]/40 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(55,181,172,0.15)] relative"
+          <div className="flex-1 w-full min-w-0 border border-[#37B5AC]/40 rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(55,181,172,0.15)] relative"
             style={{ background: 'rgba(15,22,35,0.7)', transition: 'all 0.3s' }}>
             {(isLoading || status === 'idle') ? <SkeletonTable />
               : isScraping ? <ScrapingPlaceholder pct={progress.pct} />
@@ -404,7 +414,7 @@ const LeaderboardTable = ({ users, onRowClick }) => {
   });
 
   return (
-    <div ref={parentRef} className="overflow-auto" style={{ maxHeight: '72vh' }}>
+    <div ref={parentRef} className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: '72vh' }}>
       <div style={{ minWidth: 800 }}>
         {/* Header */}
         <div className={cn('sticky top-0 z-10 grid gap-4 px-6 py-3 border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500', COL)}
@@ -446,7 +456,7 @@ const LeaderboardTable = ({ users, onRowClick }) => {
                 <div className="text-slate-400 font-mono text-sm">{fmtTime(u.finish_time)}</div>
                 {/* Prev Rating */}
                 <div className="text-slate-400 font-mono text-sm">{u.previous_rating.toFixed(0)}</div>
-                {/* Delta Layout strictly matching image */}
+                {/* Delta Layout */}
                 <div className="flex items-center gap-3">
                   <span className={cn('font-bold font-mono text-xs w-20 text-right flex items-center justify-end gap-1.5', isPos ? 'text-[#37B5AC]' : 'text-[#D9455B]')} style={{ opacity: 0.95 }}>
                     {isPos ? `+${u.predicted_delta.toFixed(1)} ▲` : `${u.predicted_delta.toFixed(1)} ▼`}
@@ -501,14 +511,13 @@ const RadarChart = () => (
 
 // ─── Player Focus Sidebar ─────────────────────────────────────────────────
 const UserDetailSidebar = ({ user, totalParticipants, onClose }) => {
-  const isPos = user.predicted_delta >= 0;
   return (
-    <div className="flex flex-col border border-slate-700/50 rounded-2xl shadow-[0_0_30px_rgba(45,212,191,0.05)] h-[72vh] overflow-hidden"
-      style={{ background: 'rgba(15,22,35,0.7)', backdropFilter: 'blur(20px)' }}>
+    <div className="flex flex-col h-full lg:h-[72vh] rounded-none lg:rounded-2xl border-0 lg:border border-slate-700/50 shadow-none lg:shadow-[0_0_30px_rgba(45,212,191,0.05)] overflow-hidden"
+      style={{ background: 'rgba(15,22,35,0.95)', backdropFilter: 'blur(20px)' }}>
       {/* Header */}
-      <div className="px-5 py-4 flex items-center justify-between border-b border-white/5">
+      <div className="px-5 py-6 lg:py-4 flex items-center justify-between border-b border-white/5">
         <span className="font-semibold text-white tracking-wide text-sm">Player Focus</span>
-        <button onClick={onClose}><ChevronDown className="w-4 h-4 text-slate-500 -rotate-90 hover:text-white" /></button>
+        <button onClick={onClose} className="p-2 -mr-2"><ChevronDown className="w-5 h-5 lg:w-4 lg:h-4 text-slate-500 lg:-rotate-90 hover:text-white" /></button>
       </div>
 
       {/* Scrollable Content */}
@@ -558,7 +567,7 @@ const UserDetailSidebar = ({ user, totalParticipants, onClose }) => {
           </div>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 pb-6 lg:pb-0">
           <h4 className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest">Predictive Insights</h4>
           <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
             Your player insights will show his future performance in this weekend based on continuous metric tracking.
@@ -570,24 +579,6 @@ const UserDetailSidebar = ({ user, totalParticipants, onClose }) => {
 };
 
 // ─── Helper Components ────────────────────────────────────────────────────────
-const MetricCard = ({ label, value, color, glow, bgCol, border }) => (
-  <div className="rounded-xl p-3 flex flex-col items-center text-center h-24 justify-between transition-transform hover:scale-105"
-    style={{ background: bgCol || 'rgba(30,41,59,0.5)', border: `1px solid ${border || 'rgba(51,65,85,0.5)'}` }}>
-    <span className="text-[10px] text-slate-400 font-medium leading-tight">{label}</span>
-    <span className="text-2xl font-bold"
-      style={{ color: color || '#fff', filter: glow ? `drop-shadow(0 0 8px ${glow})` : undefined }}>
-      {value}
-    </span>
-  </div>
-);
-
-const DetailRow = ({ label, value }) => (
-  <div className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
-    <span className="text-sm font-semibold text-slate-300">{label}</span>
-    <span className="text-sm font-bold font-mono text-slate-100">{value}</span>
-  </div>
-);
-
 const SkeletonTable = () => (
   <div className="p-6 space-y-3 animate-pulse">
     {[...Array(14)].map((_, i) => (

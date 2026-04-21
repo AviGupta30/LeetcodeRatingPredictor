@@ -197,7 +197,7 @@ const App = () => {
               </span>
             </div>
 
-            {/* Overlapping Shield Badge - Hidden on mobile to save space */}
+            {/* Overlapping Shield Badge - Hidden on mobile */}
             <div className="relative mx-5 hidden md:block">
               <div className="absolute top-[-26px] left-0 w-[42px] h-[52px] bg-gradient-to-b from-[#374151] to-[#1F2937] flex justify-center items-center z-50 shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
                 style={{ clipPath: 'polygon(50% 100%, 100% 75%, 100% 0, 0 0, 0 75%)' }}>
@@ -415,9 +415,6 @@ const LeaderboardTable = ({ users, onRowClick }) => {
 
   return (
     <div ref={parentRef} className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: '72vh' }}>
-      {/* FIX 1: Increased minWidth from 800 to 900 so the flexbox grid 
-        never crushes the username column on tiny screens. 
-      */}
       <div style={{ minWidth: 900 }}>
         {/* Header */}
         <div className={cn('sticky top-0 z-10 grid gap-4 px-6 py-3 border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500', COL)}
@@ -432,6 +429,13 @@ const LeaderboardTable = ({ users, onRowClick }) => {
             const u = users[vRow.index];
             const isTop = u.global_rank <= TOP_RANK_N;
             const isPos = u.predicted_delta >= 0;
+
+            // --- NEW: DYNAMIC PROGRESS BAR CALCULATION ---
+            // Assume 100 points is a "large" rating change for the maximum bar width.
+            // Minimum width 5% so even small 0-point changes are slightly visible.
+            const maxExpectedDelta = 100;
+            const deltaPercent = Math.min(100, Math.max(5, (Math.abs(u.predicted_delta) / maxExpectedDelta) * 100));
+
             return (
               <div key={vRow.key} data-index={vRow.index} ref={rowVirtualizer.measureElement}
                 onClick={() => onRowClick(u)}
@@ -447,7 +451,7 @@ const LeaderboardTable = ({ users, onRowClick }) => {
                   {isTop && <Trophy className="w-3 h-3" />}{u.global_rank}
                 </div>
 
-                {/* Username - FIX 2: Restructured flexbox to prevent text collapsing */}
+                {/* Username */}
                 <div className="font-semibold text-[#60A5FA] text-sm group-hover:text-blue-300 transition-colors flex items-center min-w-0">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`} className="w-6 h-6 rounded-full bg-slate-800 shrink-0 mr-2" />
                   <span className="truncate">{u.username}</span>
@@ -459,20 +463,25 @@ const LeaderboardTable = ({ users, onRowClick }) => {
                 <div className="text-slate-400 font-mono text-sm">{fmtTime(u.finish_time)}</div>
                 {/* Prev Rating */}
                 <div className="text-slate-400 font-mono text-sm">{u.previous_rating.toFixed(0)}</div>
-                {/* Delta Layout */}
+
+                {/* --- NEW: DYNAMIC DELTA BAR --- */}
                 <div className="flex items-center gap-3">
                   <span className={cn('font-bold font-mono text-xs w-20 text-right flex items-center justify-end gap-1.5', isPos ? 'text-[#37B5AC]' : 'text-[#D9455B]')} style={{ opacity: 0.95 }}>
                     {isPos ? `+${u.predicted_delta.toFixed(1)} ▲` : `${u.predicted_delta.toFixed(1)} ▼`}
                   </span>
-                  <div className="w-8 h-3.5 bg-[#202937] rounded-full relative shrink-0"
-                    style={{
-                      border: isPos ? '1px solid rgba(55,181,172,0.6)' : '1px solid rgba(217,69,91,0.6)',
-                      boxShadow: isPos ? '0 0 8px rgba(55,181,172,0.4)' : '0 0 8px rgba(217,69,91,0.4)'
-                    }}>
-                    <div className={cn("absolute top-[1.5px] bottom-[1.5px] w-[14px] rounded-full", isPos ? "bg-[#37B5AC] right-[1.5px]" : "bg-[#D9455B] left-[1.5px]")}
-                      style={{ boxShadow: isPos ? '0 0 6px rgba(55,181,172,0.8)' : '0 0 6px rgba(217,69,91,0.8)' }}></div>
+                  {/* Dynamic Progress Bar Background */}
+                  <div className="w-12 h-1.5 bg-[#1A283B] rounded-full overflow-hidden shrink-0">
+                    {/* The dynamic fill based on percentage */}
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500", isPos ? "bg-[#37B5AC]" : "bg-[#D9455B]")}
+                      style={{
+                        width: `${deltaPercent}%`,
+                        boxShadow: isPos ? '0 0 8px rgba(55,181,172,0.8)' : '0 0 8px rgba(217,69,91,0.8)'
+                      }}
+                    ></div>
                   </div>
                 </div>
+
                 {/* Predicted Rating */}
                 <div className="font-bold font-mono text-sm text-[#FBBF24]"
                   style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.3))' }}>
